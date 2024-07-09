@@ -2,48 +2,45 @@
 session_start();
 include('database.php');
 
-if(isset($_POST['email']) && isset($_POST['password'])) {
-    function validate($data) {
-        $data = trim($data);
-        $data = stripslashes($data);
-        $data = htmlspecialchars($data);
-        return $data;
-    }
+function validate($data) {
+    $data = trim($data);
+    $data = stripslashes($data);
+    $data = htmlspecialchars($data);
+    return $data;
 }
 
-$email = validate($_POST['email']);
-$password = validate($_POST['password']);
-
-if(empty($email)) {
-    header("Location: index.php?error=Email is required");
-    exit();
-}
-else if(empty($password)) {
-    header("Location: index.php?error=Password is required");
-    exit();
-}
-
-$sql = "SELECT * FROM ezrdb WHERE email='$email' AND password=$password";
-
-$result = mysqli_query($conn, $sql);
-
-if(mysqli_num_rows($result) === 1) {
-    if($row['email'] === $email && $row['password'] === $password) {
-        echo "Succesfully Logged In";
-        $_SESSION['email'] = $row['email'];
-        $_SESSION['password'] = $row['password'];
-        $_SESSION['id'] = $row['id'];
-        header("Location: home.php");
+if (isset($_POST['login'])) {
+    $email = validate($_POST['email']);
+    $password = validate($_POST['password']); 
+    if (empty($email)) {
+        header("Location: login.php?error=Email is required");
         exit();
+    } elseif (empty($password)) {
+        header("Location: login.php?error=Password is required");
+        exit();
+    }
+
+    $stmt = $conn->prepare("SELECT * FROM users WHERE email=?");
+    $stmt->bind_param("s", $email);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($result->num_rows === 1) {
+        $row = $result->fetch_assoc();
+        $hashed_password = $row['password'];
+        if (password_verify($password, $hashed_password)) {
+            echo "Successfully Logged In";
+            $_SESSION['email'] = $email;
+            $_SESSION['id'] = $row['id'];
+            header("Location: home.php");
+            exit;
+        } else {
+            header("Location: index.php?error=Incorrect email or password");
+            exit;
         }
-    else{
-        header("Location: index.php?error=Incorrect Email or Password");
+    } else {
+        header("Location: index.php?error=Incorrect email or password");
         exit();
     }
-}
-else {
-    header("Location: index.php");
-    exit();
 }
 ?>
-
